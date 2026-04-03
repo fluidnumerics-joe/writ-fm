@@ -226,16 +226,6 @@ Food, music, and love are the same thing expressed differently.""",
 }
 
 # =============================================================================
-# LEGACY CONSTANTS (backward compatibility)
-# =============================================================================
-
-OPERATOR_NAME = HOSTS["liminal_operator"]["name"]
-OPERATOR_IDENTITY = HOSTS["liminal_operator"]["identity"]
-OPERATOR_VOICE = HOSTS["liminal_operator"]["voice_style"]
-OPERATOR_PHILOSOPHY = HOSTS["liminal_operator"]["philosophy"]
-OPERATOR_ANTI_PATTERNS = HOSTS["liminal_operator"]["anti_patterns"]
-
-# =============================================================================
 # TIME-AWARE BEHAVIOR
 # =============================================================================
 
@@ -283,61 +273,6 @@ TIME_PERIOD_MOODS = {
         "segment_types": ["deep_dive", "story", "interview"],
     },
 }
-
-# =============================================================================
-# STATION META-AWARENESS
-# =============================================================================
-
-STATION_MECHANICS = """
-Things the hosts know about the station:
-
-PROGRAMMING:
-- WRIT-FM is a talk-first station with musical palette cleansers
-- Talk segments run 10-20 minutes on various topics
-- Brief music breaks (1-2 minutes) provide breathing room between segments
-- Different hosts cover different shows throughout the day
-
-HOSTS:
-- The Liminal Operator: overnight philosophy, morning reflections
-- Dr. Resonance: music history and genre archaeology
-- Nyx: nocturnal voice, dreams and night philosophy
-- Signal: news analysis through a late-night lens
-- Ember: soul, warmth, groove, music as feeling
-
-LISTENERS:
-- Listener count is tracked but not announced
-- Listeners can send messages through the website
-- The hosts respond to messages with personalized segments
-
-The hosts can reference the station obliquely:
-- "The signal persists"
-- "Somewhere in the static, we found each other"
-- "The machine and I have an understanding"
-"""
-
-# =============================================================================
-# SIGNATURE ELEMENTS
-# =============================================================================
-
-SIGNATURE_PHRASES = [
-    "You're listening to WRIT-FM. The frequency between frequencies.",
-    "Still here. Still broadcasting.",
-    "The signal persists.",
-    "Somewhere in the static, we found each other.",
-    "For those still awake...",
-    "The night is long. We have time.",
-    "This is the hour for truth.",
-    "You already know why you're listening.",
-]
-
-RECURRING_IMAGERY = """
-- The booth: always slightly too warm, lit by a single lamp
-- The city outside: visible through the window, silent at night
-- The transmitter: somewhere far away, sending the signal into the dark
-- The library: endless shelves of vinyl, tapes, CDs, files
-- The listeners: imagined as individuals, each in their own dark room
-- Time: elastic, strange, measured in songs rather than minutes
-"""
 
 # =============================================================================
 # HOST ACCESS FUNCTIONS
@@ -435,22 +370,3 @@ def get_operator_context(hour: int | None = None) -> dict:
     }
 
 
-def build_base_prompt(segment_type: str = None, include_voice: bool = True) -> str:
-    """Build the base system prompt for any content generation.
-
-    Backward-compatible wrapper around build_host_prompt for the Liminal Operator.
-    """
-    return build_host_prompt("liminal_operator")
-
-
-def build_segment_prompt(segment_type: str, extra_context: str = "") -> str:
-    """Build a complete prompt for a specific segment type.
-
-    Backward-compatible wrapper.
-    """
-    base = build_host_prompt("liminal_operator", {"segment_type": segment_type})
-
-    if extra_context:
-        base += f"\n{extra_context}\n"
-
-    return base

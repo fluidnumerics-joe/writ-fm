@@ -29,8 +29,8 @@ Fork this to create your own AI radio station with your own music, voice, and pe
 │  API :8001 ────────────────────────► now-playing endpoint   │
 ├─────────────────────────────────────────────────────────────┤
 │  content_generator/                                         │
-│    ├── batch_schedule_generator.py  (Gemini + Kokoro)       │
-│    ├── headless_dj_generator.py     (Claude + Chatterbox)   │
+│    ├── talk_generator.py            (Claude + Kokoro)       │
+│    ├── music_bumper_generator.py    (ACE-Step AI music)     │
 │    └── persona.py                   (station identity)      │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -103,16 +103,9 @@ uv run python now_playing_server.py
 
 ### 6. Generate DJ segments
 
-**Using Gemini + Kokoro (fast, batch-friendly):**
 ```bash
 cd mac/content_generator
-uv run python batch_schedule_generator.py --count 20
-```
-
-**Using Claude + Chatterbox (voice cloning):**
-```bash
-cd mac/content_generator
-uv run python headless_dj_generator.py --count 20
+uv run python talk_generator.py --all --count 3
 ```
 
 ## Weekly Schedule
@@ -199,13 +192,13 @@ This checks stream health, generates new segments when running low, and logs sta
 │   ├── play_history.py        # Track history/dedup
 │   ├── discogs_lookup.py      # Album art + QR codes
 │   ├── qr_generator.py        # Discogs QR for now-playing
-│   ├── watchdog.py            # Process monitor
 │   ├── operator_prompt.md     # Automated maintenance prompt
 │   ├── chatterbox/            # Chatterbox TTS wrapper
 │   ├── kokoro/                # Kokoro TTS wrapper
 │   ├── content_generator/
-│   │   ├── batch_schedule_generator.py  # Gemini + Kokoro
-│   │   ├── headless_dj_generator.py     # Claude + Chatterbox
+│   │   ├── talk_generator.py            # Talk segment generator (Claude + Kokoro)
+│   │   ├── music_bumper_generator.py    # AI music bumper generator (ACE-Step)
+│   │   ├── listener_response_generator.py # Listener message → audio
 │   │   ├── persona.py                   # Station identity
 │   │   └── helpers.py                   # Shared utilities
 │   └── voice_reference/       # Voice samples for cloning

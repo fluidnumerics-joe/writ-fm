@@ -42,7 +42,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from helpers import log, preprocess_for_tts, fetch_headlines, format_headlines
+from helpers import log, preprocess_for_tts, fetch_headlines, format_headlines, run_claude
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SCHEDULE_PATH = PROJECT_ROOT / "config" / "schedule.yaml"
@@ -316,35 +316,11 @@ TARGET LENGTH: {min_words}-{max_words} words
 def run_generation(prompt: str, segment_type: str) -> str | None:
     """Run Claude CLI to generate the script."""
     min_words, max_words = SEGMENT_WORD_TARGETS.get(segment_type, (1500, 2500))
-
-    # Longer timeout for longer segments
     timeout = 120 if max_words < 200 else 300
 
-    try:
-        result = subprocess.run(
-            ["claude", "-p", prompt],
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-    except subprocess.TimeoutExpired:
-        log("Claude timed out")
+    script = run_claude(prompt, timeout=timeout)
+    if not script:
         return None
-    except FileNotFoundError:
-        log("Claude CLI not found")
-        return None
-    except Exception as e:
-        log(f"Claude error: {e}")
-        return None
-
-    if result.returncode != 0 or not result.stdout.strip():
-        return None
-
-    script = result.stdout.strip()
-    # Clean markdown artifacts
-    script = script.replace("*", "").replace("_", "")
-    if script.startswith('"') and script.endswith('"'):
-        script = script[1:-1].strip()
 
     # Quality gate: check word count
     word_count = len(script.split())

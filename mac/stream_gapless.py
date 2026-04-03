@@ -151,6 +151,22 @@ def get_program_context(station_schedule=None) -> ProgramContext:
 # UTILITY FUNCTIONS
 # =============================================================================
 
+
+def record_play(filepath: Path, name: str, vibe: str, show_id: str):
+    """Record a track play in the history database."""
+    if HISTORY_ENABLED:
+        try:
+            get_history().record_play(
+                filepath=str(filepath),
+                track_name=name,
+                vibe=vibe,
+                time_period=show_id,
+                listeners=get_listener_count(),
+            )
+        except Exception:
+            pass
+
+
 def signal_handler(signum, frame):
     global running, encoder_proc
     log("Shutting down...")
@@ -663,19 +679,7 @@ def run():
                     except Exception:
                         pass
 
-                    # Record in history
-                    if HISTORY_ENABLED:
-                        try:
-                            history = get_history()
-                            history.record_play(
-                                filepath=str(talk_seg),
-                                track_name=seg_name,
-                                vibe="talk",
-                                time_period=ctx.show_id,
-                                listeners=get_listener_count(),
-                            )
-                        except Exception:
-                            pass
+                    record_play(talk_seg, seg_name, "talk", ctx.show_id)
 
                     # Play music bumper between talk segments
                     if running and encoder_proc.poll() is None:
@@ -695,18 +699,7 @@ def run():
                             if not pipe_track(bpath, encoder_proc, bstart, bdur):
                                 log("AI bumper pipe failed, continuing...")
 
-                            if HISTORY_ENABLED:
-                                try:
-                                    history = get_history()
-                                    history.record_play(
-                                        filepath=str(bpath),
-                                        track_name=bname,
-                                        vibe="ai_bumper",
-                                        time_period=ctx.show_id,
-                                        listeners=get_listener_count(),
-                                    )
-                                except Exception:
-                                    pass
+                            record_play(bpath, bname, "ai_bumper", ctx.show_id)
                         else:
                             log("  No AI bumpers available, skipping break")
 
@@ -771,18 +764,7 @@ def run():
                     if not pipe_track(bpath, encoder_proc, bstart, bdur):
                         break
 
-                    if HISTORY_ENABLED:
-                        try:
-                            history = get_history()
-                            history.record_play(
-                                filepath=str(bpath),
-                                track_name=bname,
-                                vibe="ai_bumper",
-                                time_period=ctx.show_id,
-                                listeners=get_listener_count(),
-                            )
-                        except Exception:
-                            pass
+                    record_play(bpath, bname, "ai_bumper", ctx.show_id)
 
                     bumper_count += 1
 

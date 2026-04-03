@@ -15,7 +15,6 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
 
-VOICE_REF_EXTENSIONS = (".wav", ".m4a", ".mp3")
 DEFAULT_NEWS_FEEDS = (
     "https://feeds.bbci.co.uk/news/rss.xml",
     "https://feeds.npr.org/1001/rss.xml",
@@ -106,18 +105,6 @@ def run_claude(
     if len(script) <= min_length:
         return None
     return script
-
-
-def find_voice_reference(voice_dir: Path, preferred: Path | None = None) -> Path | None:
-    if preferred:
-        return preferred
-
-    for ext in VOICE_REF_EXTENSIONS:
-        candidates = list(voice_dir.glob(f"*{ext}"))
-        if candidates:
-            return candidates[0]
-
-    return None
 
 
 def _strip_namespace(tag: str) -> str:
