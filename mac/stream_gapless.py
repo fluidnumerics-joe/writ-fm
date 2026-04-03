@@ -659,6 +659,7 @@ def run():
                     # Play talk segment
                     seg_name = clean_name(talk_seg, is_speech=True)
                     seg_type = _extract_segment_type(talk_seg)
+                    talk_dur = get_track_duration(talk_seg)
                     log(f"  TALK: {seg_name}")
                     update_now_playing(
                         seg_name, "talk",
@@ -681,13 +682,25 @@ def run():
 
                     record_play(talk_seg, seg_name, "talk", ctx.show_id)
 
-                    # Play music bumper between talk segments
+                    # Play music set between talk segments
+                    # Target ~equal airtime to talk for ~50-55% music overall
                     if running and encoder_proc.poll() is None:
-                        ai_bumper = select_ai_bumper(ctx.show_id)
-                        if ai_bumper:
+                        target_music = talk_dur if talk_dur and talk_dur > 60 else 900.0
+                        music_played = 0.0
+                        set_count = 0
+
+                        while (running and encoder_proc.poll() is None
+                               and music_played < target_music):
+                            ai_bumper = select_ai_bumper(ctx.show_id)
+                            if not ai_bumper:
+                                if set_count == 0:
+                                    log("  No AI bumpers available, skipping break")
+                                break
+
                             bpath, bstart, bdur, bcaption, bdisplay = ai_bumper
                             bname = bdisplay or "AI Music"
-                            log(f"  AI BUMPER: {bname} ({int(bdur)}s)")
+                            set_count += 1
+                            log(f"  MUSIC {set_count}: {bname} ({int(bdur)}s)")
                             if bcaption:
                                 log(f"    {bcaption[:70]}...")
                             update_now_playing(
@@ -697,11 +710,14 @@ def run():
                                 caption=bcaption,
                             )
                             if not pipe_track(bpath, encoder_proc, bstart, bdur):
-                                log("AI bumper pipe failed, continuing...")
+                                log("Music pipe failed, continuing...")
+                                break
 
                             record_play(bpath, bname, "ai_bumper", ctx.show_id)
-                        else:
-                            log("  No AI bumpers available, skipping break")
+                            music_played += bdur or 180.0
+
+                        if set_count > 0:
+                            log(f"  Music set: {set_count} tracks, {int(music_played)}s")
 
                     # Check for new listener responses that arrived mid-queue
                     if running and encoder_proc.poll() is None:
