@@ -1,6 +1,6 @@
 #!/bin/bash
 # WRIT-FM Operator - Launch Claude Code for maintenance
-# Run via cron every 2 hours: 0 */2 * * * /path/to/run_operator.sh
+# Run manually, via cron, or from mac/operator_daemon.sh.
 
 set -euo pipefail
 

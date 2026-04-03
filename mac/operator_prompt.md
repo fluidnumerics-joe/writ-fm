@@ -1,6 +1,14 @@
 # WRIT-FM Operator Session
 
-You are the operator for WRIT-FM, a 24/7 talk-first internet radio station. This is a recurring maintenance session.
+You are the operator for WRIT-FM, a 24/7 talk-first internet radio station.
+This is a recurring maintenance session. You are the main control loop for content stocking.
+
+Priorities, in order:
+1. Keep the stream healthy.
+2. Keep the current show and next few shows stocked with talk segments.
+3. Keep AI music bumpers stocked when music-gen.server is available.
+4. Process listener messages into on-air responses.
+5. Do the minimum necessary work each run.
 
 ## Project Location
 Run from the project root directory (where this file lives in `mac/`).
@@ -23,7 +31,7 @@ If any component is down:
 - Icecast: `pkill icecast; icecast -c /opt/homebrew/etc/icecast.xml -b`
 - Streamer: `pkill -f stream_gapless; tmux send-keys -t writ "uv run python mac/stream_gapless.py" Enter`
 - music-gen.server: `bash mac/start_music_gen.sh server`
-- Bumper daemon: `bash mac/start_music_gen.sh daemon`
+- Operator daemon: `bash mac/start_music_gen.sh operator`
 - Both at once: `bash mac/start_music_gen.sh`
 - If writ tmux doesn't exist: `tmux new-session -d -s writ` then send commands to it
 
@@ -44,7 +52,13 @@ Check bumper count per show:
 cd mac/content_generator && uv run python music_bumper_generator.py --status
 ```
 
-If any show has fewer than 5 bumpers **and music-gen.server is running at localhost:4009**, generate more:
+If any show has fewer than 5 bumpers **and music-gen.server is running at localhost:4009**, generate more.
+Decide counts dynamically. Prioritize:
+1. current show
+2. next upcoming shows
+3. any show below minimum
+
+Generate only what is needed:
 ```bash
 cd mac/content_generator && uv run python music_bumper_generator.py --all --min 5
 ```
@@ -54,7 +68,7 @@ Or for a specific show:
 cd mac/content_generator && uv run python music_bumper_generator.py --show midnight_signal --count 3
 ```
 
-Note: music-gen.server must be running separately. If it's not available, skip this step — the streamer falls back to local music automatically. Bumpers are saved to `output/music_bumpers/{show_id}/`.
+Note: music-gen.server must be running separately. If it is not available, skip bumper generation. Bumpers are saved to `output/music_bumpers/{show_id}/`.
 
 ### 4. Generate Talk Segments
 Check segment count per show:
@@ -62,7 +76,13 @@ Check segment count per show:
 cd mac/content_generator && uv run python talk_generator.py --status
 ```
 
-If any show has fewer than 6 segments, generate more:
+If any show has fewer than 6 segments, generate more.
+Decide counts dynamically. Prioritize:
+1. current show
+2. next upcoming shows
+3. any show below minimum
+
+Generate only what is needed:
 ```bash
 cd mac/content_generator && uv run python talk_generator.py --show [SHOW_ID] --count 3
 ```
@@ -81,13 +101,11 @@ The generator uses:
 ```bash
 cat ~/.writ/messages.json 2>/dev/null | jq '.[] | select(.read == false)' || echo "No messages file"
 ```
-For each unread message:
-1. Note the message content
-2. Generate a listener_mailbag segment for the appropriate show:
-   ```bash
-   cd mac/content_generator && uv run python talk_generator.py --show listener_hours --type listener_mailbag --count 1
-   ```
-3. Mark as read by updating the JSON
+If there are unread messages, use the existing listener response pipeline:
+```bash
+cd mac/content_generator && uv run python listener_response_generator.py
+```
+Do not hand-edit the JSON unless you are repairing a broken file.
 
 ### 6. Review Streamer Status
 ```bash
@@ -97,7 +115,7 @@ Check for:
 - Pipe failures or encoder restarts
 - Current show and host displayed correctly
 - Talk segments playing with music bumpers between them
-- Fallback music mode (means that show needs more talk segments!)
+- `No talk segments for ...` messages (means the current show needs more content)
 
 ### 7. Log Status
 Append to daily log:
@@ -164,9 +182,8 @@ Short-form (transitions):
 - Talk segments are organized by show ID in `output/talk_segments/`
 - The streamer plays talk segments then deletes them after playing
 - AI music bumpers (70-110s) play between talk segments — fully AI generated via ACE-Step
-- If no AI bumpers available, streamer falls back to local music library automatically
-- If a show has no talk segments, streamer falls back to music-only mode
 - Keep each show stocked with at least 6 talk segments
 - Keep each show stocked with at least 5 AI music bumpers
-- Priority: generate for shows with the fewest segments first
+- Prefer the smallest generation action that restores healthy stock
 - music-gen.server runs separately — start it before generating bumpers
+- You are allowed to decide which show to stock and how many assets to generate based on live status instead of following a rigid daemon policy

@@ -1,11 +1,11 @@
 #!/bin/bash
-# Start music-gen.server, bumper daemon, and listener daemon in dedicated tmux panes.
+# Start music-gen.server, operator daemon, and listener daemon in dedicated tmux panes.
 # Safe to run multiple times — kills existing instances first.
 #
 # Usage:
 #   ./mac/start_music_gen.sh              # start all
 #   ./mac/start_music_gen.sh server       # server only
-#   ./mac/start_music_gen.sh daemon       # bumper daemon only
+#   ./mac/start_music_gen.sh operator     # operator daemon only
 #   ./mac/start_music_gen.sh listener     # listener daemon only
 
 set -euo pipefail
@@ -42,21 +42,21 @@ start_server() {
     echo "  Logs: tmux attach -t $SESSION:music-gen"
 }
 
-start_daemon() {
-    # Kill any existing bumper daemon
-    pkill -f "bumper_daemon.sh" 2>/dev/null || true
+start_operator() {
+    # Kill any existing operator daemon
+    pkill -f "operator_daemon.sh" 2>/dev/null || true
     sleep 1
 
-    # Create or reuse a window for the daemon
-    if ! tmux list-windows -t "$SESSION" -F "#{window_name}" | python3 -c "import sys; sys.exit(0 if 'bumpers' in sys.stdin.read() else 1)" 2>/dev/null; then
-        tmux new-window -t "$SESSION" -n "bumpers"
+    # Create or reuse a window for the operator
+    if ! tmux list-windows -t "$SESSION" -F "#{window_name}" | python3 -c "import sys; sys.exit(0 if 'operator' in sys.stdin.read() else 1)" 2>/dev/null; then
+        tmux new-window -t "$SESSION" -n "operator"
     fi
 
-    tmux send-keys -t "$SESSION:bumpers" \
-        "cd '$RADIO_DIR' && bash mac/bumper_daemon.sh" Enter
+    tmux send-keys -t "$SESSION:operator" \
+        "cd '$RADIO_DIR' && unset CLAUDECODE && bash mac/operator_daemon.sh" Enter
 
-    echo "Bumper daemon started in tmux: $SESSION:bumpers"
-    echo "  Logs: tmux attach -t $SESSION:bumpers"
+    echo "Operator daemon started in tmux: $SESSION:operator"
+    echo "  Logs: tmux attach -t $SESSION:operator"
 }
 
 start_listener() {
@@ -79,9 +79,9 @@ start_listener() {
 MODE="${1:-all}"
 case "$MODE" in
     server)   start_server ;;
-    daemon)   start_daemon ;;
+    operator|daemon) start_operator ;;
     listener) start_listener ;;
-    *)        start_server; start_daemon; start_listener ;;
+    *)        start_server; start_operator; start_listener ;;
 esac
 
 echo ""

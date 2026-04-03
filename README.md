@@ -180,7 +180,12 @@ Or via cron:
 0 */2 * * * cd /path/to/writ-fm && ./run_operator.sh
 ```
 
-This checks stream health, generates new segments when running low, and logs status.
+Or as a persistent loop:
+```bash
+bash mac/operator_daemon.sh
+```
+
+The operator loop checks stream health, decides which shows need content, generates new talk segments and AI bumpers when needed, and processes listener messages.
 
 ## Files
 
