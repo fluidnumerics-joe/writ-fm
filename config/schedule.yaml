@@ -85,6 +85,16 @@ shows:
     voices:
       host: "am_michael"
 
+  repo_report:
+    name: "The Repo Report"
+    description: "FluidNumerics open source activity, delivered with the gravitas it deserves."
+    host: "ron_burgundy"
+    topic_focus: "github_activity"
+    segment_types: ["repo_report"]
+    bumper_style: "jazz"
+    voices:
+      host: "chatterbox:ron_burgundy"
+
 
 # Weekly schedule.
 # - `base` applies every day.
@@ -123,6 +133,10 @@ schedule:
       show: "the_night_garden"
 
   overrides:
+    - days: ["weekday"]
+      start: "12:00"
+      end: "13:00"
+      show: "repo_report"
     - days: ["sun"]
       start: "18:00"
       end: "20:00"

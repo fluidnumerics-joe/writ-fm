@@ -30,6 +30,7 @@ INDEX_TO_DAY = {i: k for k, i in DAY_TO_INDEX.items()}
 VALID_SEGMENT_TYPES = {
     "deep_dive", "news_analysis", "interview", "panel", "story",
     "listener_mailbag", "listener_response", "music_essay",
+    "repo_report",
     "station_id", "show_intro", "show_outro",
 }
 

@@ -42,7 +42,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from helpers import log, preprocess_for_tts, fetch_headlines, format_headlines, run_claude
+from helpers import log, preprocess_for_tts, fetch_headlines, format_headlines, fetch_github_activity, format_github_activity, run_claude
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SCHEDULE_PATH = PROJECT_ROOT / "config" / "schedule.yaml"
@@ -68,6 +68,7 @@ SEGMENT_WORD_TARGETS = {
     "story": (1500, 2500),
     "listener_mailbag": (1500, 2000),
     "music_essay": (1500, 2500),
+    "repo_report": (800, 1500),
     # Short-form
     "station_id": (15, 30),
     "show_intro": (80, 150),
@@ -125,6 +126,21 @@ Pick a specific angle: a single song, a studio, a year, a collaboration, a genre
 Use vivid, sensory language. Make the listener hear what you're describing.
 Be specific with details but universal with feeling.
 Use [pause] for natural rhythm. Output ONLY the spoken words.""",
+
+    "repo_report": """You are delivering the developer news. Read these GitHub activity
+items like they are breaking news bulletins. Each commit, PR, and issue is a headline.
+Treat the developers like field correspondents reporting from the front lines.
+
+Give the audience a sense of what's happening across the repositories. Editorialize
+freely - speculate about what the code might do (you don't really know), express
+admiration for the contributors, and find drama in the mundane.
+
+Open with a strong anchor intro. Close with a sign-off.
+
+RECENT ACTIVITY:
+{github_activity}
+
+Use [pause] for dramatic effect. Output ONLY the spoken words.""",
 
     "station_id": """Write a 15-30 word station ID for WRIT-FM.
 Be cryptic but warm. Reference the frequency, the signal, the persistence of broadcasting.
@@ -228,6 +244,13 @@ TOPIC_POOLS = {
         "Lullabies and the ancient technology of singing someone to sleep",
         "Why creativity peaks after midnight",
     ],
+    "github_activity": [
+        "The repo report - what's happening in FluidNumerics open source",
+        "Commit roundup - the code that shipped this week",
+        "Pull request desk - merges, reviews, and the developers who make it happen",
+        "Issue tracker - bugs filed, bugs squashed, and the ones that got away",
+        "Release watch - new versions and what they mean for the community",
+    ],
     "listeners": [
         "Letters from the frequency - your messages answered",
         "The songs that changed your lives - listener stories",
@@ -294,6 +317,10 @@ def build_generation_prompt(
         headlines = fetch_headlines()
         headline_text = format_headlines(headlines) if headlines else "No headlines available - discuss the nature of news itself."
         prompt_template = prompt_template.format(headlines=headline_text)
+    elif segment_type == "repo_report":
+        activity = fetch_github_activity()
+        activity_text = format_github_activity(activity) if activity else "No recent activity found - riff on the silence. What are the developers planning? The repo is quiet... too quiet."
+        prompt_template = prompt_template.format(github_activity=activity_text)
     elif segment_type == "interview":
         guest = random.choice(INTERVIEW_GUESTS)
         prompt_template = prompt_template.format(guest_name=guest["name"])
@@ -389,12 +416,39 @@ print("SUCCESS")
         return False
 
 
+def render_chatterbox(text: str, output_path: Path, voice_name: str) -> bool:
+    """Render text to speech using Chatterbox TTS with voice cloning."""
+    chatterbox_dir = PROJECT_ROOT / "mac" / "chatterbox"
+    voices_dir = chatterbox_dir / "voices"
+    voice_ref = voices_dir / f"{voice_name}.wav"
+
+    if not voice_ref.exists():
+        log(f"Chatterbox voice reference not found: {voice_ref}")
+        log(f"  Place a reference WAV at: {voice_ref}")
+        return False
+
+    sys.path.insert(0, str(chatterbox_dir))
+    try:
+        from tts import render_speech
+        return render_speech(text, output_path, voice_ref=voice_ref)
+    except ImportError:
+        log("Chatterbox TTS module not available — run setup first")
+        return False
+
+
 def render_single_voice(script: str, output_path: Path, voice: str) -> bool:
     """Render a single-voice script to audio, chunking for long content."""
+    # Route chatterbox: prefixed voices to Chatterbox TTS
+    is_chatterbox = voice.startswith("chatterbox:")
+    if is_chatterbox:
+        voice_name = voice.split(":", 1)[1]
+
     MAX_CHUNK_WORDS = 100
     words = script.split()
 
     if len(words) <= MAX_CHUNK_WORDS:
+        if is_chatterbox:
+            return render_chatterbox(script, output_path, voice_name)
         return render_kokoro(script, output_path, voice)
 
     # Split at sentence boundaries
@@ -425,7 +479,11 @@ def render_single_voice(script: str, output_path: Path, voice: str) -> bool:
     for i, chunk in enumerate(chunks):
         chunk_path = output_path.with_stem(f"{output_path.stem}_chunk{i:03d}")
         for attempt in range(2):
-            if render_kokoro(chunk, chunk_path, voice):
+            if is_chatterbox:
+                ok = render_chatterbox(chunk, chunk_path, voice_name)
+            else:
+                ok = render_kokoro(chunk, chunk_path, voice)
+            if ok:
                 chunk_files.append(chunk_path)
                 break
             time.sleep(2)
@@ -778,7 +836,7 @@ def main():
     if args.list_types:
         print("\n=== Segment Types ===\n")
         print("Long-form (primary content):")
-        for st in ["deep_dive", "news_analysis", "interview", "panel", "story", "listener_mailbag", "music_essay"]:
+        for st in ["deep_dive", "news_analysis", "interview", "panel", "story", "listener_mailbag", "music_essay", "repo_report"]:
             mn, mx = SEGMENT_WORD_TARGETS[st]
             print(f"  {st:20s} {mn}-{mx} words")
         print("\nShort-form (transitions):")
